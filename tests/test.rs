@@ -593,3 +593,19 @@ fn default_lsb_padding_default_value() {
     let val: u8 = my_byte_msb.into();
     assert_eq!(val, 0b1010_1111);
 }
+
+fn from_bits_with_defaults() {
+    #[bitfield(u32)]
+    struct MyBitfield {
+        #[bits(16, default = 0)]
+        _reserved: u32,
+        #[bits(16, default = 0xFFFF)]
+        data: u32,
+    }
+    let from_bits_val = MyBitfield::from_bits(0xffff_ffff);
+    let from_bits_raw: u32 = from_bits_val.into();
+    assert_eq!(from_bits_raw, 0xffff_ffff);
+    let from_bits_with_defaults_val = MyBitfield::from_bits_with_defaults(0xffff_ffff);
+    let from_bits_raw: u32 = from_bits_with_defaults_val.into();
+    assert_eq!(from_bits_raw, 0xffff_0000);
+}
