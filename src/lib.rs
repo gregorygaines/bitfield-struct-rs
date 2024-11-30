@@ -326,6 +326,7 @@ struct Member {
     repr_into: Option<syn::Path>,
     repr_from: Option<syn::Path>,
     default: TokenStream,
+    order: Order,
     inner: Option<MemberInner>,
 }
 
@@ -415,6 +416,7 @@ impl Member {
                 repr_into,
                 repr_from,
                 default,
+                order,
                 inner: Some(MemberInner {
                     ident,
                     ty,
@@ -436,6 +438,7 @@ impl Member {
                 repr_into,
                 repr_from,
                 default,
+                order,
                 inner: None,
             })
         }
@@ -458,9 +461,22 @@ impl Member {
         let repr_into = &self.repr_into;
         let repr_from = &self.repr_from;
         let bits = self.bits as u32;
-        quote!{
-            let mask = #base_ty::MAX >> (#base_ty::BITS - #bits);
-            this.0 = #repr_from(#repr_into(this.0) | (((#default as #base_ty) & mask) << #offset));
+        let order = self.order;
+
+        match order {
+            Order::Lsb => {
+                quote! {
+                    let mask = #base_ty::MAX >> (#base_ty::BITS - #bits);
+                    this.0 = #repr_from(#repr_into(this.0) | (((#default as #base_ty) & mask) << #offset));
+                }
+            }
+            Order::Msb => {
+                quote! {
+                    let mask = #base_ty::MAX >> (#base_ty::BITS - #bits);
+                    let offset = (#base_ty::BITS as #base_ty - #bits as #base_ty) - #offset as #base_ty;
+                    this.0 = #repr_from(#repr_into(this.0) | (((#default as #base_ty) & mask) << offset));
+                }
+            }
         }
     }
 }
@@ -474,6 +490,7 @@ impl ToTokens for Member {
             repr_into,
             repr_from,
             default: _,
+            order: _,
             inner:
                 Some(MemberInner {
                     ident,
@@ -565,6 +582,10 @@ impl ToTokens for Member {
             });
         }
     }
+}
+
+impl ToTokens for Order {
+    fn to_tokens(&self, _tokens: &mut TokenStream) {}
 }
 
 /// Distinguish between different types for code generation.
